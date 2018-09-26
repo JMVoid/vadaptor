@@ -9,7 +9,7 @@ import (
 	"v2ray.com/core/proxy/vmess"
 	log "github.com/Sirupsen/logrus"
 	"fmt"
-	"github.com/JMVoid/v2ssadaptor/pb"
+	"github.com/JMVoid/vadaptor/pb"
 	"time"
 	"google.golang.org/grpc"
 )

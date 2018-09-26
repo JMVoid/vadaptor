@@ -5,9 +5,9 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"encoding/json"
-	"github.com/JMVoid/v2ssadaptor/mysql"
-	"github.com/JMVoid/v2ssadaptor/pb"
-	"github.com/JMVoid/v2ssadaptor/utils"
+	"github.com/JMVoid/vadaptor/mysql"
+	"github.com/JMVoid/vadaptor/pb"
+	"github.com/JMVoid/vadaptor/utils"
 	"time"
 	"os"
 )

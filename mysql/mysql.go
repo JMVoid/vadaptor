@@ -5,7 +5,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	log "github.com/Sirupsen/logrus"
-	"github.com/JMVoid/v2ssadaptor/pb"
+	"github.com/JMVoid/vadaptor/pb"
 )
 
 type DbClient struct {

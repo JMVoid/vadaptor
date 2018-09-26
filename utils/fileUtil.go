@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"github.com/JMVoid/v2ssadaptor/pb"
+	"github.com/JMVoid/vadaptor/pb"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
