@@ -1,0 +1,24 @@
+syntax = "proto3";
+package pb;
+
+message user {
+    string username = 1;
+    string uuid = 2;
+    uint32 level = 3;
+    uint32 alterId = 4;
+    uint32 enable = 5;
+    int64 transfer_enable = 6;
+
+    int64 uplink = 7;
+    int64 downlink = 8;
+
+
+    int64 upIncr = 9;
+    int64 downIncr = 10;
+
+}
+
+
+message user_repo {
+    map<string, user> usermap = 1;
+}
