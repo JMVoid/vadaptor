@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/JMVoid/v2ssadaptor/controller"
+	"github.com/JMVoid/vadaptor/controller"
 	"context"
 	"os/signal"
 	"syscall"
