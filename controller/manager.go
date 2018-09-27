@@ -134,6 +134,7 @@ func (m *Manager) Startup() {
 	var err error
 	if m.localRepo, err = utils.ReadRepo(DatFile); err != nil {
 		m.localRepo = new(pb.UserRepo)
+		m.localRepo.Usermap = make(map[string]*pb.User)
 		utils.WriteRepo(DatFile, m.localRepo)
 		log.Println("created new DAT file")
 	}
@@ -149,7 +150,7 @@ loop:
 		m.pushTransfer()
 		m.pushNodeStatus()
 
-		m.remoteRepo, err = m.MyDb.PullUser()
+		m.remoteRepo, err = m.MyDb.PullUser(m.Cfg.NodeId)
 		if err != nil || m.remoteRepo == nil {
 			log.Errorf("error on pull users from remote db, %v\n")
 
@@ -163,11 +164,6 @@ loop:
 			}
 		}
 
-		// get user transfer by remote users list
-		// add user remote data transfer property (user.totalUp)
-		// compare the totalUp + uplink > maxData. then remove the data
-		// add uploaded property to record transfer is upload or
-
 		select {
 		case <-time.After(time.Duration(m.Cfg.CycleSecond) * time.Second):
 			log.Debugln("An cycle is completed")
@@ -177,8 +173,6 @@ loop:
 		}
 
 	}
-
-
 }
 
 func (m *Manager) pushTransfer() {
@@ -201,7 +195,7 @@ func (m *Manager) pushTransfer() {
 	}
 }
 
-func (m *Manager) pushNodeStatus(){
+func (m *Manager) pushNodeStatus() {
 	upTime := time.Now().Unix() - m.BootTime
 	loadAvg := utils.GetLoadAvg()
 	err := m.MyDb.PushNodeStatus(m.Cfg.NodeId, upTime, loadAvg)

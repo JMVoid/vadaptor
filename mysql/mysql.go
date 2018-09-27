@@ -18,7 +18,7 @@ func NewDb(dbCfg string) *DbClient {
 	return dbClient
 }
 
-func (s *DbClient) PullUser() (userRepo *pb.UserRepo, err error) {
+func (s *DbClient) PullUser(nodeId uint32) (userRepo *pb.UserRepo, err error) {
 
 	db, err := sql.Open("mysql", s.SrvCfg)
 
@@ -27,8 +27,11 @@ func (s *DbClient) PullUser() (userRepo *pb.UserRepo, err error) {
 		return nil, err
 	}
 	defer db.Close()
-	rows, err := db.Query("SELECT username, vuuid, valterid, vlevel, enable, transfer_enable, u, d FROM ssrpanel.user WHERE enable > 0")
-
+	rows, err := db.Query("SELECT username, vuuid, valterid, vlevel, enable, transfer_enable, u, d FROM ssrpanel.user WHERE enable > 0 " +
+		"AND STATUS IN (0,1) AND id in " +
+		"(SELECT ul.user_id FROM ss_node_label snl, user_label ul " +
+		"WHERE ul.label_id = snl.label_id " +
+		"AND snl.node_id = ?)", nodeId)
 	defer rows.Close()
 
 	if err != nil {
@@ -59,11 +62,14 @@ func (s *DbClient) PushUserTransfer(userRepo *pb.UserRepo) error {
 
 	var userList []pb.User
 
+	uLen := len(userRepo.Usermap)
+	if uLen < 1 {
+		return nil
+	}
+
 	for _, v := range userRepo.Usermap {
 		userList = append(userList, *v)
 	}
-
-	uLen := len(userList)
 
 	queryHeader := "update user set "
 	for i := 0; i < uLen; i++ {
@@ -88,7 +94,7 @@ func (s *DbClient) PushUserTransfer(userRepo *pb.UserRepo) error {
 		log.Errorf("fail to open mysql server with : %v\n", err)
 		return err
 	}
-	log.Println(sqlRun)
+	log.Debugln(sqlRun)
 	stmt, err := db.Prepare(sqlRun)
 	if err != nil {
 		log.Errorf("Push user prepare error:%v\n", err)

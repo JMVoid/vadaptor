@@ -29,7 +29,7 @@ func pipePrint(in io.ReadCloser) {
 }
 
 func (m *Monitor) runV2ray(ctx context.Context) {
-	m.cmd = exec.CommandContext(ctx, "./v2ray", "-config", "./v2ray/v2ray.json")
+	m.cmd = exec.CommandContext(ctx, "./v2ray/v2ray", "-config", "./v2ray/v2ray.json")
 	stdout, err := m.cmd.StdoutPipe()
 	if err != nil {
 		log.Fatalf("fail to command standard out pipe %v\n", err)
