@@ -28,8 +28,11 @@ type AppConfig struct {
 	InboundTag string `json:"inbound_tag"`
 
 	CycleSecond uint32 `json:"cycle_second"`
-
 	NodeId uint32 `json:"node_id"`
+
+	V2rayPath string `json:"v2ray_path"`
+	V2rayCfg string `json:"v2ray_cfg"`
+	LogLevel string `json:"log_level"`
 }
 
 type Manager struct {
@@ -44,9 +47,28 @@ type Manager struct {
 	remoteRepo *pb.UserRepo
 }
 
+func levelMatch(level string) log.Level {
+	select {
+	case "panic": return log.PanicLevel
+	case "fatal": return log.FatalLevel
+	case "error": return log.ErrorLevel
+	case "info": return log.InfoLevel
+	case "debug": return log.DebugLevel
+	}
+
+}
+
 func NewManager() *Manager {
 
 	appCfg := new(AppConfig)
+
+	appCfg.V2rayAddr = "127.0.0.1:10085"
+	appCfg.InboundTag = "proxy"
+	appCfg.CycleSecond = 60
+	appCfg.V2rayPath = "./v2ray_core/"
+	appCfg.V2rayCfg = "v2ray.json"
+	appCfg.LogLevel = "info"
+
 
 	manager := new(Manager)
 
@@ -72,6 +94,8 @@ func NewManager() *Manager {
 	manager.MyDb = mydb
 	manager.V2Inst = v2Controller
 	manager.Cfg = appCfg
+	log.SetLevel(levelMatch(appCfg.LogLevel))
+
 	return manager
 }
 
@@ -102,7 +126,7 @@ func (m *Manager) addNewUsers() {
 			lv.Uplink = v.Uplink
 			lv.Downlink = v.Downlink
 		}
-		log.Debugf("user %s was exist in local db, skip it", k)
+		log.Debugf("user %s was exist in local db, skip add it", k)
 	}
 }
 
@@ -124,7 +148,7 @@ func (m *Manager) removeUsers() {
 			}
 			delete(m.localRepo.Usermap, k)
 		}
-		log.Debugf("user %s was exist in local db, skip it", k)
+		log.Debugf("user %s was exist in local db, skip remove it", k)
 	}
 }
 
@@ -166,7 +190,7 @@ loop:
 
 		select {
 		case <-time.After(time.Duration(m.Cfg.CycleSecond) * time.Second):
-			log.Debugln("An cycle is completed")
+			log.Debugln("An cycle check is completed")
 			continue
 		case <-ch:
 			break loop

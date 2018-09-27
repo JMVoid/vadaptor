@@ -44,7 +44,7 @@ func (s *DbClient) PullUser(nodeId uint32) (userRepo *pb.UserRepo, err error) {
 	for rows.Next() {
 		user := new(pb.User)
 		rows.Scan(&user.Username, &user.Uuid, &user.AlterId, &user.Level, &user.Enable, &user.TransferEnable, &user.Uplink, &user.Downlink)
-		fmt.Printf("%s-%s-%d-%d-%d-%d-%d-%d\n", user.Username, user.Uuid, user.AlterId, user.Level, user.Enable, user.TransferEnable, user.Uplink, user.Downlink)
+		log.Debugf("%s-%s-%d-%d-%d-%d-%d-%d\n", user.Username, user.Uuid, user.AlterId, user.Level, user.Enable, user.TransferEnable, user.Uplink, user.Downlink)
 
 		// should check the email is double or not
 		userRepo.Usermap[user.Username] = user

@@ -25,15 +25,18 @@ func main() {
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
 	)
-
+	manager := controller.NewManager()
 	pm := new(controller.Monitor)
+	pm.V2rayPath = manager.Cfg.V2rayPath
+	pm.V2rayCfg = manager.Cfg.V2rayCfg
+
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	defer cancel()
 	go pm.ProcLooper(ctx, vch)
 
-	manager := controller.NewManager()
+
 	manager.Startup()
 	manager.Update(mch)
 }

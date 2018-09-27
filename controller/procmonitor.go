@@ -14,6 +14,8 @@ const LOOPINTERVAL = 60
 
 type Monitor struct {
 	cmd *exec.Cmd
+	V2rayPath string
+	V2rayCfg string
 }
 
 func pipePrint(in io.ReadCloser) {
@@ -29,7 +31,8 @@ func pipePrint(in io.ReadCloser) {
 }
 
 func (m *Monitor) runV2ray(ctx context.Context) {
-	m.cmd = exec.CommandContext(ctx, "./v2ray/v2ray", "-config", "./v2ray/v2ray.json")
+	//m.cmd = exec.CommandContext(ctx, "./v2ray/v2ray", "-config", "./v2ray/v2ray.json")
+	m.cmd = exec.CommandContext(ctx, m.V2rayPath + "v2ray", "-config", m.V2rayPath + m.V2rayCfg)
 	stdout, err := m.cmd.StdoutPipe()
 	if err != nil {
 		log.Fatalf("fail to command standard out pipe %v\n", err)
