@@ -27,8 +27,8 @@ func main() {
 	)
 	manager := controller.NewManager()
 	pm := new(controller.Monitor)
-	pm.V2rayPath = manager.Cfg.V2rayPath
-	pm.V2rayCfg = manager.Cfg.V2rayCfg
+	pm.V2rayPath = manager.Cfg.V2ray.V2rayPath
+	pm.V2rayCfg = manager.Cfg.V2ray.V2rayCfg
 
 
 	ctx, cancel := context.WithCancel(context.Background())

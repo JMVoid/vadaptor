@@ -1,10 +1,7 @@
 package controller
 
 import (
-	"io/ioutil"
-
 	log "github.com/Sirupsen/logrus"
-	"encoding/json"
 	"github.com/JMVoid/vadaptor/mysql"
 	"github.com/JMVoid/vadaptor/pb"
 	"github.com/JMVoid/vadaptor/utils"
@@ -19,27 +16,13 @@ import (
 // circle time
 //
 
-const cfgFile = "./app.json"
-
-type AppConfig struct {
-	DbCfg string `json:"db_config"`
-
-	V2rayAddr  string `json:"v2ray_addr"`
-	InboundTag string `json:"inbound_tag"`
-
-	CycleSecond uint32 `json:"cycle_second"`
-	NodeId uint32 `json:"node_id"`
-
-	V2rayPath string `json:"v2ray_path"`
-	V2rayCfg string `json:"v2ray_cfg"`
-	LogLevel string `json:"log_level"`
-}
+const cfgFile = "./config.ini"
 
 type Manager struct {
 	V2Inst *V2Controller
 	MyDb   *mysql.DbClient
 
-	Cfg *AppConfig
+	Cfg *utils.AppConfig
 
 	BootTime int64
 
@@ -48,45 +31,53 @@ type Manager struct {
 }
 
 func levelMatch(level string) log.Level {
-	select {
-	case "panic": return log.PanicLevel
-	case "fatal": return log.FatalLevel
-	case "error": return log.ErrorLevel
-	case "info": return log.InfoLevel
-	case "debug": return log.DebugLevel
+	switch level {
+	case "panic":
+		return log.PanicLevel
+	case "fatal":
+		return log.FatalLevel
+	case "error":
+		return log.ErrorLevel
+	case "info":
+		return log.InfoLevel
+	case "debug":
+		return log.DebugLevel
+	default:
+		return log.InfoLevel
 	}
 
 }
 
 func NewManager() *Manager {
 
-	appCfg := new(AppConfig)
+	appCfg := new(utils.AppConfig)
 
-	appCfg.V2rayAddr = "127.0.0.1:10085"
-	appCfg.InboundTag = "proxy"
-	appCfg.CycleSecond = 60
-	appCfg.V2rayPath = "./v2ray_core/"
-	appCfg.V2rayCfg = "v2ray.json"
-	appCfg.LogLevel = "info"
-
+	appCfg.V2ray.V2rayAddr = "127.0.0.1:10085"
+	appCfg.V2ray.InboundTag = "proxy"
+	appCfg.V2ray.CycleSecond = 60
+	appCfg.V2ray.V2rayPath = "./v2ray_core/"
+	appCfg.V2ray.V2rayCfg = "v2ray.json"
+	appCfg.V2ray.LogLevel = "info"
 
 	manager := new(Manager)
 
 	manager.BootTime = time.Now().Unix()
 
-	data, err := ioutil.ReadFile(cfgFile)
-	if err != nil {
-		log.Fatalf("fail to read app config file with error: %v\n", err)
-	}
+	//data, err := ioutil.ReadFile(cfgFile)
+	//if err != nil {
+	//	log.Fatalf("fail to read app config file with error: %v\n", err)
+	//}
+	//
+	//if err = json.Unmarshal(data, appCfg); err != nil {
+	//	log.Fatalf("fail to parse app config file wiht error: %v\n", err)
+	//}
 
-	if err = json.Unmarshal(data, appCfg); err != nil {
-		log.Fatalf("fail to parse app config file wiht error: %v\n", err)
-	}
+	utils.ReadConfig(cfgFile, appCfg)
 	log.Println("load app config completed")
 
-	mydb := mysql.NewDb(appCfg.DbCfg)
+	mydb := mysql.NewDb(appCfg.V2ray.DbCfg)
 
-	v2Controller, err := NewV2Controller(appCfg.V2rayAddr, appCfg.InboundTag)
+	v2Controller, err := NewV2Controller(appCfg.V2ray.V2rayAddr, appCfg.V2ray.InboundTag)
 	if err != nil {
 		log.Fatalf("fail to init V2Controller with error: %v\n", err)
 	}
@@ -94,7 +85,7 @@ func NewManager() *Manager {
 	manager.MyDb = mydb
 	manager.V2Inst = v2Controller
 	manager.Cfg = appCfg
-	log.SetLevel(levelMatch(appCfg.LogLevel))
+	log.SetLevel(levelMatch(appCfg.V2ray.LogLevel))
 
 	return manager
 }
@@ -174,7 +165,7 @@ loop:
 		m.pushTransfer()
 		m.pushNodeStatus()
 
-		m.remoteRepo, err = m.MyDb.PullUser(m.Cfg.NodeId)
+		m.remoteRepo, err = m.MyDb.PullUser(m.Cfg.V2ray.NodeId)
 		if err != nil || m.remoteRepo == nil {
 			log.Errorf("error on pull users from remote db, %v\n")
 
@@ -189,7 +180,7 @@ loop:
 		}
 
 		select {
-		case <-time.After(time.Duration(m.Cfg.CycleSecond) * time.Second):
+		case <-time.After(time.Duration(m.Cfg.V2ray.CycleSecond) * time.Second):
 			log.Debugln("An cycle check is completed")
 			continue
 		case <-ch:
@@ -222,7 +213,7 @@ func (m *Manager) pushTransfer() {
 func (m *Manager) pushNodeStatus() {
 	upTime := time.Now().Unix() - m.BootTime
 	loadAvg := utils.GetLoadAvg()
-	err := m.MyDb.PushNodeStatus(m.Cfg.NodeId, upTime, loadAvg)
+	err := m.MyDb.PushNodeStatus(m.Cfg.V2ray.NodeId, upTime, loadAvg)
 	if err != nil {
 		log.Errorf("fail to push node status: %v\n", err)
 	}
