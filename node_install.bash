@@ -1,5 +1,4 @@
 #!/bin/bash
-v2_ver=3.45
 extract() {
         tar zxvf vadaptor-linux.tar.gz --remove-file
         unzip v2ray-linux-64.zip

@@ -7,6 +7,7 @@ import (
 	"github.com/JMVoid/vadaptor/utils"
 	"time"
 	"os"
+	"context"
 )
 
 //
@@ -143,7 +144,7 @@ func (m *Manager) removeUsers() {
 	}
 }
 
-const DatFile = ".adaptor.dat"
+const DatFile = ".vadaptor.dat"
 
 func (m *Manager) Startup() {
 	var err error
@@ -156,18 +157,18 @@ func (m *Manager) Startup() {
 	m.initNewUsers()
 }
 
-func (m *Manager) Update(ch chan os.Signal) {
+func (m *Manager) Update(ctx context.Context, cancel context.CancelFunc, ch chan os.Signal) {
 	var err error
 
 loop:
 	for {
 		// push local data to remote Db
-		m.pushTransfer()
-		m.pushNodeStatus()
+		m.pushTransfer(ctx)
+		m.pushNodeStatus(ctx)
 
 		m.remoteRepo, err = m.MyDb.PullUser(m.Cfg.V2ray.NodeId)
 		if err != nil || m.remoteRepo == nil {
-			log.Errorf("error on pull users from remote db, %v\n")
+			log.Errorf("error on pull users from remote db, %v\n", err)
 
 		} else {
 			//push local user transfer to remote db
@@ -184,13 +185,14 @@ loop:
 			log.Debugln("An cycle check is completed")
 			continue
 		case <-ch:
+			cancel()
 			break loop
 		}
 
 	}
 }
 
-func (m *Manager) pushTransfer() {
+func (m *Manager) pushTransfer(ctx context.Context) error {
 
 	for _, v := range m.localRepo.Usermap {
 		err := m.V2Inst.GetTraffic(v, true)
@@ -198,9 +200,9 @@ func (m *Manager) pushTransfer() {
 			log.Error(err)
 		}
 	}
-	err := m.MyDb.PushUserTransfer(m.localRepo)
+	err := m.MyDb.PushUserTransfer(ctx, m.localRepo)
 	if err != nil {
-		log.Errorf("Push error %v\n", err)
+		return err
 	}
 
 	// clean the localRepo user upIncr downIncr
@@ -208,13 +210,16 @@ func (m *Manager) pushTransfer() {
 		v.UpIncr = 0
 		v.DownIncr = 0
 	}
+	return nil
 }
 
-func (m *Manager) pushNodeStatus() {
+func (m *Manager) pushNodeStatus(ctx context.Context) error {
 	upTime := time.Now().Unix() - m.BootTime
 	loadAvg := utils.GetLoadAvg()
-	err := m.MyDb.PushNodeStatus(m.Cfg.V2ray.NodeId, upTime, loadAvg)
+	err := m.MyDb.PushNodeStatus(ctx, m.Cfg.V2ray.NodeId, upTime, loadAvg)
 	if err != nil {
 		log.Errorf("fail to push node status: %v\n", err)
+		return err
 	}
+	return nil
 }

@@ -6,6 +6,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	log "github.com/Sirupsen/logrus"
 	"github.com/JMVoid/vadaptor/pb"
+	"context"
 )
 
 type DbClient struct {
@@ -23,7 +24,7 @@ func (s *DbClient) PullUser(nodeId uint32) (userRepo *pb.UserRepo, err error) {
 	db, err := sql.Open("mysql", s.SrvCfg)
 
 	if err != nil {
-		log.Errorf("fail to open mysql server with : %v\n", err)
+		log.Errorf("fail to open mysql server with : %v", err)
 		return nil, err
 	}
 	defer db.Close()
@@ -32,12 +33,11 @@ func (s *DbClient) PullUser(nodeId uint32) (userRepo *pb.UserRepo, err error) {
 		"(SELECT ul.user_id FROM ss_node_label snl, user_label ul " +
 		"WHERE ul.label_id = snl.label_id " +
 		"AND snl.node_id = ?)", nodeId)
-	defer rows.Close()
-
 	if err != nil {
-		log.Errorf("fail to pull user from db with err: %v\n", err)
+		log.Errorf("fail to pull user from db with err: %v", err)
 		return nil, err
 	}
+	defer rows.Close()
 
 	userRepo = new(pb.UserRepo)
 	userRepo.Usermap = make(map[string]*pb.User)
@@ -53,7 +53,7 @@ func (s *DbClient) PullUser(nodeId uint32) (userRepo *pb.UserRepo, err error) {
 	return userRepo, nil
 }
 
-func (s *DbClient) PushUserTransfer(userRepo *pb.UserRepo) error {
+func (s *DbClient) PushUserTransfer(ctx context.Context, userRepo *pb.UserRepo ) error {
 	var queryWhend string
 	var queryWhenu string
 	var sqlWhen string
@@ -89,15 +89,17 @@ func (s *DbClient) PushUserTransfer(userRepo *pb.UserRepo) error {
 	sqlRun := queryHeader + sqlWhen + sqlWhere
 
 	db, err := sql.Open("mysql", s.SrvCfg)
-	defer db.Close()
 	if err != nil {
-		log.Errorf("fail to open mysql server with : %v\n", err)
+		log.Errorf("fail to open mysql server with : %v", err)
 		return err
 	}
+
+	defer db.Close()
+
 	log.Debugln(sqlRun)
-	stmt, err := db.Prepare(sqlRun)
+	stmt, err := db.PrepareContext(ctx, sqlRun)
 	if err != nil {
-		log.Errorf("Push user prepare error:%v\n", err)
+		log.Errorf("Push user prepare error:%v", err)
 		return err
 	}
 
@@ -111,23 +113,23 @@ func (s *DbClient) PushUserTransfer(userRepo *pb.UserRepo) error {
 	return nil
 }
 
-func (s *DbClient) PushNodeStatus(nodeId uint32, upTime int64, load string) error {
+func (s *DbClient) PushNodeStatus(ctx context.Context, nodeId uint32, upTime int64, load string) error {
 	queryHeader := "INSERT INTO ss_node_info(`id`, `node_id`, `uptime`, `load`, `log_time`) values "
 	valueStr := fmt.Sprintf("(NULL, %d, %d, '%s', unix_timestamp())", nodeId, upTime, load)
 
 	sqlRun := queryHeader + valueStr
 
 	db, err := sql.Open("mysql", s.SrvCfg)
-
 	if err != nil {
-		log.Errorf("fail to open mysql server with : %v\n", err)
+		log.Errorf("fail to open mysql server with : %v", err)
 		return err
 	}
+
 	defer db.Close()
-	stmt, err := db.Prepare(sqlRun)
+	stmt, err := db.PrepareContext(ctx, sqlRun)
 
 	if err != nil {
-		log.Errorf("Push Node status prepare error:%v\n", err)
+		log.Errorf("Push Node status prepare error:%v", err)
 		return err
 	}
 	defer stmt.Close()
