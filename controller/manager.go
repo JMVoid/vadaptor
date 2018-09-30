@@ -148,12 +148,15 @@ const DatFile = ".vadaptor.dat"
 
 func (m *Manager) Startup() {
 	var err error
-	if m.localRepo, err = utils.ReadRepo(DatFile); err != nil {
+
+	m.localRepo, err = utils.ReadRepo(DatFile)
+	if  err != nil || m.localRepo == nil || m.localRepo.Usermap == nil{
 		m.localRepo = new(pb.UserRepo)
 		m.localRepo.Usermap = make(map[string]*pb.User)
 		utils.WriteRepo(DatFile, m.localRepo)
 		log.Println("created new DAT file")
 	}
+
 	m.initNewUsers()
 }
 
@@ -168,7 +171,7 @@ loop:
 
 		m.remoteRepo, err = m.MyDb.PullUser(m.Cfg.V2ray.NodeId)
 		if err != nil || m.remoteRepo == nil {
-			log.Errorf("error on pull users from remote db, %v\n", err)
+			log.Errorf("error on pull users from remote db, %v", err)
 
 		} else {
 			//push local user transfer to remote db
@@ -218,7 +221,7 @@ func (m *Manager) pushNodeStatus(ctx context.Context) error {
 	loadAvg := utils.GetLoadAvg()
 	err := m.MyDb.PushNodeStatus(ctx, m.Cfg.V2ray.NodeId, upTime, loadAvg)
 	if err != nil {
-		log.Errorf("fail to push node status: %v\n", err)
+		//log.Errorf("fail to push node status: %v", err)
 		return err
 	}
 	return nil

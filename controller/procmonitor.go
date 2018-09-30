@@ -22,11 +22,11 @@ func pipePrint(in io.ReadCloser) {
 	rd := bufio.NewReader(in)
 
 	for {
-		str, isPrefix, err := rd.ReadLine()
+		str, _, err := rd.ReadLine()
 		if err != nil {
 			return
 		}
-		log.Printf("pipePrintOut: %s, isPrefix:%t\n", str, isPrefix)
+		log.Printf("V2ray core standard out: %s", str)
 	}
 }
 
@@ -35,17 +35,17 @@ func (m *Monitor) runV2ray(ctx context.Context) {
 	m.cmd = exec.CommandContext(ctx, m.V2rayPath + "v2ray", "-config", m.V2rayPath + m.V2rayCfg)
 	stdout, err := m.cmd.StdoutPipe()
 	if err != nil {
-		log.Fatalf("fail to command standard out pipe %v\n", err)
+		log.Fatalf("fail to command standard out pipe %v", err)
 	}
 	stderr, err := m.cmd.StderrPipe()
 
 	if err != nil {
-		log.Fatalf("fail to command standard error pipe %v\n", err)
+		log.Fatalf("fail to command standard error pipe %v", err)
 	}
 
 	err = m.cmd.Start()
 	if err != nil {
-		log.Fatalf("fail to start program: %v\n", err)
+		log.Fatalf("fail to start program: %v", err)
 	}
 
 	go pipePrint(stdout)

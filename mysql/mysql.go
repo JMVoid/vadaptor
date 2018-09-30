@@ -34,7 +34,7 @@ func (s *DbClient) PullUser(nodeId uint32) (userRepo *pb.UserRepo, err error) {
 		"WHERE ul.label_id = snl.label_id " +
 		"AND snl.node_id = ?)", nodeId)
 	if err != nil {
-		log.Errorf("fail to pull user from db with err: %v", err)
+		//log.Errorf("fail to pull user from db with err: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
