@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-const INIT_TRY_TIMES = 3
-const CFG_FILE = "./config.ini"
+const InitTryTimes = 3
+const CfgFile = "./config.ini"
 const DatFile = ".vadaptor.dat"
 
 type Manager struct {
@@ -59,10 +59,10 @@ func NewManager() *Manager {
 
 	manager.BootTime = time.Now().Unix()
 
-	utils.ReadConfig(CFG_FILE, appCfg)
+	utils.ReadConfig(CfgFile, appCfg)
 	log.Println("load app config completed")
 
-	mydb := mysql.NewDb(appCfg.V2ray.DbCfg)
+	mydb := mysql.NewDb(appCfg.V2ray)
 
 	v2Controller, err := NewV2Controller(appCfg.V2ray.V2rayAddr, appCfg.V2ray.InboundTag)
 	if err != nil {
@@ -82,7 +82,7 @@ func (m *Manager) initNewUsers() {
 	var tryCount uint32 = 0
 	var keepGoing = false
 	time.Sleep(2 * time.Second)
-	initLoop:
+initLoop:
 	for {
 	loop:
 		for _, v := range m.localRepo.Usermap {
@@ -90,10 +90,10 @@ func (m *Manager) initNewUsers() {
 			err := m.V2Inst.AddUser(*v)
 			if err != nil {
 				log.Println(err.Error())
-				if strings.Contains(err.Error(), "connection refused") && tryCount <= INIT_TRY_TIMES {
+				if strings.Contains(err.Error(), "connection refused") && tryCount <= InitTryTimes {
 
 					tryCount++
-					//if tryCount >= INIT_TRY_TIMES {
+					//if tryCount >= InitTryTimes {
 					//	log.Panicln("try init user failure some time, program exit")
 					//}
 					time.Sleep(1 * time.Second)
@@ -155,8 +155,6 @@ func (m *Manager) removeUsers() {
 		log.Debugf("user %s was exist in local db, skip remove it", k)
 	}
 }
-
-
 
 func (m *Manager) Startup() {
 	var err error

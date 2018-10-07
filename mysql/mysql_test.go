@@ -2,10 +2,9 @@ package mysql
 
 import (
 	"testing"
+	"github.com/JMVoid/vadaptor/utils"
 )
 
-
-const DBCONFIG = "root:root@tcp(127.0.0.1:3306)/ssrpanel"
 
 
 //func TestPullUser(t *testing.T){
@@ -49,7 +48,14 @@ const DBCONFIG = "root:root@tcp(127.0.0.1:3306)/ssrpanel"
 
 func TestPushNodeStatus(t *testing.T) {
 
-	client := NewDb(DBCONFIG)
+	v2rayCfg := new(utils.V2ray)
+	v2rayCfg.DbCfg = "remote:remote@tcp(192.168.8.151:3306)/ssrpanel"
+	v2rayCfg.DbSslCa = "/home/blockchain/goProject/src/github.com/JMVoid/vadaptor/ca.pem"
+	v2rayCfg.DbSslCert = "/home/blockchain/goProject/src/github.com/JMVoid/vadaptor/client-cert.pem"
+	v2rayCfg.DbSslKey = "/home/blockchain/goProject/src/github.com/JMVoid/vadaptor/client-key.pem"
+
+
+	client := NewDb(*v2rayCfg)
 	err := client.PushNodeStatus(2, 888888, "0.85,0.85,0.85")
 	if err != nil {
 		t.Error("fail to push node status")

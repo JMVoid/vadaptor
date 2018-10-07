@@ -6,15 +6,52 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	log "github.com/Sirupsen/logrus"
 	"github.com/JMVoid/vadaptor/pb"
+	"github.com/JMVoid/vadaptor/utils"
+	"crypto/tls"
+	"github.com/go-sql-driver/mysql"
+	"io/ioutil"
+	"crypto/x509"
 )
 
 type DbClient struct {
 	SrvCfg string
 }
 
-func NewDb(dbCfg string) *DbClient {
+//func NewDb(dbCfg string) *DbClient {
+func NewDb(dbCfg utils.V2ray) *DbClient {
+
+	var certs tls.Certificate
+	var err error
+	var rootCertPool *x509.CertPool
+
+	if dbCfg.DbSslCa != "" {
+		rootCertPool = x509.NewCertPool()
+		pem, err := ioutil.ReadFile(dbCfg.DbSslCa)
+		if err != nil {
+			log.Panicln(err)
+		}
+		if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+			log.Panicln("Failed to append PEM.")
+		}
+	}
+
+	if dbCfg.DbSslCert != "" && dbCfg.DbSslKey != "" {
+		certs, err = tls.LoadX509KeyPair(dbCfg.DbSslCert, dbCfg.DbSslKey)
+		if err != nil {
+			log.Panicln("config SSL but fail to load cert and key pem files")
+		}
+	}
+
+	clientCert := make([]tls.Certificate, 0, 1)
+	clientCert = append(clientCert, certs)
+
+	mysql.RegisterTLSConfig("mysqlSSL", &tls.Config{
+		RootCAs:      nil,
+		Certificates: clientCert,
+	})
+
 	dbClient := new(DbClient)
-	dbClient.SrvCfg = dbCfg
+	dbClient.SrvCfg = dbCfg.DbCfg + "?tls=mysqlSSL&tls=skip-verify"
 	return dbClient
 }
 
@@ -27,10 +64,10 @@ func (s *DbClient) PullUser(nodeId uint32) (userRepo *pb.UserRepo, err error) {
 		return nil, err
 	}
 	defer db.Close()
-	rows, err := db.Query("SELECT username, vuuid, valterid, vlevel, enable, transfer_enable, u, d FROM ssrpanel.user WHERE enable > 0 " +
-		"AND STATUS IN (0,1) AND id in " +
-		"(SELECT ul.user_id FROM ss_node_label snl, user_label ul " +
-		"WHERE ul.label_id = snl.label_id " +
+	rows, err := db.Query("SELECT username, vuuid, valterid, vlevel, enable, transfer_enable, u, d FROM ssrpanel.user WHERE enable > 0 "+
+		"AND STATUS IN (0,1) AND id in "+
+		"(SELECT ul.user_id FROM ss_node_label snl, user_label ul "+
+		"WHERE ul.label_id = snl.label_id "+
 		"AND snl.node_id = ?)", nodeId)
 	if err != nil {
 		//log.Errorf("fail to pull user from db with err: %v", err)
@@ -52,7 +89,7 @@ func (s *DbClient) PullUser(nodeId uint32) (userRepo *pb.UserRepo, err error) {
 	return userRepo, nil
 }
 
-func (s *DbClient) PushUserTransfer(userRepo *pb.UserRepo ) error {
+func (s *DbClient) PushUserTransfer(userRepo *pb.UserRepo) error {
 	var queryWhend string
 	var queryWhenu string
 	var sqlWhen string

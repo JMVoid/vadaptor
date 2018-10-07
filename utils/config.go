@@ -11,6 +11,9 @@ type AppConfig struct {
 
 type V2ray struct {
 	DbCfg string `gcfg:"dbConfig"`
+	DbSslCa string `gcfg:"dbSslCa"`
+	DbSslCert string `gcfg:"dbSslCert"`
+	DbSslKey string `gcfg:dbSslKey`
 
 	V2rayAddr  string `gcfg:"v2rayAddr"`
 	InboundTag string `gcfg:"inboundTag"`
