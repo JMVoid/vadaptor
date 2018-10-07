@@ -10,7 +10,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"fmt"
 	"github.com/JMVoid/vadaptor/pb"
-	"time"
 	"google.golang.org/grpc"
 )
 
@@ -28,11 +27,11 @@ const (
 
 func NewV2Controller(addr, tag string) (*V2Controller, error) {
 
-		cc, err := grpc.Dial(addr, grpc.WithInsecure())
-		if err != nil  {
-			log.Error(err)
-			return nil, err
-		}
+	cc, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
 
 	client := command.NewHandlerServiceClient(cc)
 	statsClient := statscmd.NewStatsServiceClient(cc)
@@ -47,36 +46,26 @@ func NewV2Controller(addr, tag string) (*V2Controller, error) {
 }
 
 func (v *V2Controller) AddUser(u pb.User) error {
+	_, err := v.client.AlterInbound(context.Background(), &command.AlterInboundRequest{
+		Tag: v.inBoundTag,
+		Operation: serial.ToTypedMessage(
+			&command.AddUserOperation{
+				User: &protocol.User{
+					Level: u.GetLevel(),
+					Email: u.GetUsername(),
+					Account: serial.ToTypedMessage(&vmess.Account{
+						Id:               u.GetUuid(),
+						AlterId:          u.GetAlterId(),
+						SecuritySettings: &protocol.SecurityConfig{Type: protocol.SecurityType_AUTO},
+					}),
+				},
+			}),
+	})
 
-	var err error
-	for count :=0; count<10; count++{
-		_, err = v.client.AlterInbound(context.Background(), &command.AlterInboundRequest{
-			Tag: v.inBoundTag,
-			Operation: serial.ToTypedMessage(
-				&command.AddUserOperation{
-					User: &protocol.User{
-						Level: u.GetLevel(),
-						Email: u.GetUsername(),
-						Account: serial.ToTypedMessage(&vmess.Account{
-							Id:               u.GetUuid(),
-							AlterId:          u.GetAlterId(),
-							SecuritySettings: &protocol.SecurityConfig{Type: protocol.SecurityType_AUTO},
-						}),
-					},
-				}),
-		})
-
-		if err == nil {
-			//log.Errorf("failed to call add user: %v\n", err)
-			break
-		}
-		time.Sleep(time.Duration(200) * time.Millisecond)
-	}
 	if err != nil {
 		return err
 	}
-
-	log.Printf("add [%s] user to v2ray successfully", u.GetUsername())
+	log.Printf("added [%s] user to v2ray successfully", u.GetUsername())
 	return nil
 }
 
@@ -105,7 +94,7 @@ func (v *V2Controller) GetTraffic(u *pb.User, isReset bool) error {
 	})
 
 	if err != nil {
-		log.Errorf("get upload traffic user %s error %v", u.GetUsername(), err)
+		//log.Errorf("get upload traffic user %s error |%s|", u.GetUsername(), err.Error())
 		return err
 	}
 
@@ -115,7 +104,7 @@ func (v *V2Controller) GetTraffic(u *pb.User, isReset bool) error {
 	})
 
 	if err != nil {
-		log.Errorf("get download traffic user %s error %v", u.GetUsername(), err)
+		//log.Errorf("get download traffic user %s error %v", u.GetUsername(), err)
 		return err
 	}
 

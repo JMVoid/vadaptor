@@ -2,10 +2,9 @@ package main
 
 import (
 	"github.com/JMVoid/vadaptor/controller"
-	"context"
+	"os"
 	"os/signal"
 	"syscall"
-	"os"
 )
 
 func main() {
@@ -31,12 +30,16 @@ func main() {
 	pm.V2rayPath = manager.Cfg.V2ray.V2rayPath
 	pm.V2rayCfg = manager.Cfg.V2ray.V2rayCfg
 
+	//ctx, _ := context.WithCancel(context.Background())
+	//
+	go pm.ProcLooper( vch)
 
-	ctx, cancel := context.WithCancel(context.Background())
-
-	go pm.ProcLooper(ctx, vch)
-
+	//vch<-syscall.SIGTERM
 
 	manager.Startup()
-	manager.Update(ctx, cancel, mch)
+	manager.Update(mch)
+
+	defer func(ch chan os.Signal) {
+		ch<-syscall.SIGTERM
+	}(vch)
 }

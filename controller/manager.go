@@ -7,17 +7,12 @@ import (
 	"github.com/JMVoid/vadaptor/utils"
 	"time"
 	"os"
-	"context"
+	"strings"
 )
 
-//
-
-// config
-// mysql server string
-// circle time
-//
-
-const cfgFile = "./config.ini"
+const INIT_TRY_TIMES = 3
+const CFG_FILE = "./config.ini"
+const DatFile = ".vadaptor.dat"
 
 type Manager struct {
 	V2Inst *V2Controller
@@ -56,7 +51,7 @@ func NewManager() *Manager {
 	appCfg.V2ray.V2rayAddr = "127.0.0.1:10085"
 	appCfg.V2ray.InboundTag = "proxy"
 	appCfg.V2ray.CycleSecond = 60
-	appCfg.V2ray.V2rayPath = "./v2ray_core/"
+	appCfg.V2ray.V2rayPath = "./v2ray-core/"
 	appCfg.V2ray.V2rayCfg = "v2ray.json"
 	appCfg.V2ray.LogLevel = "info"
 
@@ -64,23 +59,14 @@ func NewManager() *Manager {
 
 	manager.BootTime = time.Now().Unix()
 
-	//data, err := ioutil.ReadFile(cfgFile)
-	//if err != nil {
-	//	log.Fatalf("fail to read app config file with error: %v\n", err)
-	//}
-	//
-	//if err = json.Unmarshal(data, appCfg); err != nil {
-	//	log.Fatalf("fail to parse app config file wiht error: %v\n", err)
-	//}
-
-	utils.ReadConfig(cfgFile, appCfg)
+	utils.ReadConfig(CFG_FILE, appCfg)
 	log.Println("load app config completed")
 
 	mydb := mysql.NewDb(appCfg.V2ray.DbCfg)
 
 	v2Controller, err := NewV2Controller(appCfg.V2ray.V2rayAddr, appCfg.V2ray.InboundTag)
 	if err != nil {
-		log.Fatalf("fail to init V2Controller with error: %v\n", err)
+		log.Panicf("fail to init V2Controller with error: %v\n", err)
 	}
 
 	manager.MyDb = mydb
@@ -92,10 +78,36 @@ func NewManager() *Manager {
 }
 
 func (m *Manager) initNewUsers() {
-	for k, v := range m.localRepo.Usermap {
-		err := m.V2Inst.AddUser(*v)
-		if err != nil {
-			log.Errorf("error on init new user [%s] with %v\n", k, err)
+
+	var tryCount uint32 = 0
+	var keepGoing = false
+	time.Sleep(2 * time.Second)
+	initLoop:
+	for {
+	loop:
+		for _, v := range m.localRepo.Usermap {
+
+			err := m.V2Inst.AddUser(*v)
+			if err != nil {
+				log.Println(err.Error())
+				if strings.Contains(err.Error(), "connection refused") && tryCount <= INIT_TRY_TIMES {
+
+					tryCount++
+					//if tryCount >= INIT_TRY_TIMES {
+					//	log.Panicln("try init user failure some time, program exit")
+					//}
+					time.Sleep(1 * time.Second)
+
+					break loop
+				} else {
+					log.Panicln("init user failure, program exit")
+				}
+			} else {
+				keepGoing = true
+			}
+		}
+		if keepGoing {
+			break initLoop
 		}
 	}
 }
@@ -144,13 +156,13 @@ func (m *Manager) removeUsers() {
 	}
 }
 
-const DatFile = ".vadaptor.dat"
+
 
 func (m *Manager) Startup() {
 	var err error
 
 	m.localRepo, err = utils.ReadRepo(DatFile)
-	if  err != nil || m.localRepo == nil || m.localRepo.Usermap == nil{
+	if err != nil || m.localRepo == nil || m.localRepo.Usermap == nil {
 		m.localRepo = new(pb.UserRepo)
 		m.localRepo.Usermap = make(map[string]*pb.User)
 		utils.WriteRepo(DatFile, m.localRepo)
@@ -160,14 +172,14 @@ func (m *Manager) Startup() {
 	m.initNewUsers()
 }
 
-func (m *Manager) Update(ctx context.Context, cancel context.CancelFunc, ch chan os.Signal) {
+func (m *Manager) Update(ch chan os.Signal) {
 	var err error
 
 loop:
 	for {
 		// push local data to remote Db
-		m.pushTransfer(ctx)
-		m.pushNodeStatus(ctx)
+		m.pushTransfer()
+		m.pushNodeStatus()
 
 		m.remoteRepo, err = m.MyDb.PullUser(m.Cfg.V2ray.NodeId)
 		if err != nil || m.remoteRepo == nil {
@@ -188,22 +200,21 @@ loop:
 			log.Debugln("An cycle check is completed")
 			continue
 		case <-ch:
-			cancel()
 			break loop
 		}
-
 	}
 }
 
-func (m *Manager) pushTransfer(ctx context.Context) error {
+func (m *Manager) pushTransfer() error {
 
 	for _, v := range m.localRepo.Usermap {
 		err := m.V2Inst.GetTraffic(v, true)
 		if err != nil {
-			log.Error(err)
+			return err
+			//log.Error(err)
 		}
 	}
-	err := m.MyDb.PushUserTransfer(ctx, m.localRepo)
+	err := m.MyDb.PushUserTransfer(m.localRepo)
 	if err != nil {
 		return err
 	}
@@ -216,10 +227,10 @@ func (m *Manager) pushTransfer(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) pushNodeStatus(ctx context.Context) error {
+func (m *Manager) pushNodeStatus() error {
 	upTime := time.Now().Unix() - m.BootTime
 	loadAvg := utils.GetLoadAvg()
-	err := m.MyDb.PushNodeStatus(ctx, m.Cfg.V2ray.NodeId, upTime, loadAvg)
+	err := m.MyDb.PushNodeStatus(m.Cfg.V2ray.NodeId, upTime, loadAvg)
 	if err != nil {
 		//log.Errorf("fail to push node status: %v", err)
 		return err

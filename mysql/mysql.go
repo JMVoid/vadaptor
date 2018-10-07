@@ -6,7 +6,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	log "github.com/Sirupsen/logrus"
 	"github.com/JMVoid/vadaptor/pb"
-	"context"
 )
 
 type DbClient struct {
@@ -53,7 +52,7 @@ func (s *DbClient) PullUser(nodeId uint32) (userRepo *pb.UserRepo, err error) {
 	return userRepo, nil
 }
 
-func (s *DbClient) PushUserTransfer(ctx context.Context, userRepo *pb.UserRepo ) error {
+func (s *DbClient) PushUserTransfer(userRepo *pb.UserRepo ) error {
 	var queryWhend string
 	var queryWhenu string
 	var sqlWhen string
@@ -97,7 +96,7 @@ func (s *DbClient) PushUserTransfer(ctx context.Context, userRepo *pb.UserRepo )
 	defer db.Close()
 
 	log.Debugln(sqlRun)
-	stmt, err := db.PrepareContext(ctx, sqlRun)
+	stmt, err := db.Prepare(sqlRun)
 	if err != nil {
 		log.Errorf("Push user prepare error:%v", err)
 		return err
@@ -113,7 +112,7 @@ func (s *DbClient) PushUserTransfer(ctx context.Context, userRepo *pb.UserRepo )
 	return nil
 }
 
-func (s *DbClient) PushNodeStatus(ctx context.Context, nodeId uint32, upTime int64, load string) error {
+func (s *DbClient) PushNodeStatus(nodeId uint32, upTime int64, load string) error {
 	queryHeader := "INSERT INTO ss_node_info(`id`, `node_id`, `uptime`, `load`, `log_time`) values "
 	valueStr := fmt.Sprintf("(NULL, %d, %d, '%s', unix_timestamp())", nodeId, upTime, load)
 
@@ -126,7 +125,7 @@ func (s *DbClient) PushNodeStatus(ctx context.Context, nodeId uint32, upTime int
 	}
 
 	defer db.Close()
-	stmt, err := db.PrepareContext(ctx, sqlRun)
+	stmt, err := db.Prepare(sqlRun)
 
 	if err != nil {
 		log.Errorf("Push Node status prepare error:%v", err)

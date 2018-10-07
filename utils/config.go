@@ -26,6 +26,6 @@ type V2ray struct {
 func ReadConfig(cfgFile string, config *AppConfig) {
 	err := gcfg.ReadFileInto(config, cfgFile)
 	if err != nil {
-		log.Fatalf("Fatal read config.ini config file with %v\n", err)
+		log.Panicf("Fatal read config.ini config file with %v\n", err)
 	}
 }
