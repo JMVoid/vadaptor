@@ -72,10 +72,10 @@ loop:
 				log.Infoln("restarting V2ray program")
 				go m.runV2ray()
 			} else {
-				log.Debugln("exec command process status is null")
+				log.Debugln("exec command process status is null, v2ray is living")
 			}
 		} else {
-			log.Debugln("exec command is null")
+			log.Debugln("exec command is null, start v2ray")
 		}
 		select {
 		case <-time.After(time.Duration(LOOPINTERVAL) * time.Second):

@@ -84,23 +84,27 @@ func (m *Manager) initNewUsers() {
 	time.Sleep(2 * time.Second)
 initLoop:
 	for {
+
+		if len(m.localRepo.Usermap) == 0 {
+			keepGoing = true
+		}
 	loop:
 		for _, v := range m.localRepo.Usermap {
 
 			err := m.V2Inst.AddUser(*v)
 			if err != nil {
 				log.Println(err.Error())
-				if strings.Contains(err.Error(), "connection refused") && tryCount <= InitTryTimes {
+				if strings.Contains(err.Error(), "connection refused") {
 
 					tryCount++
-					//if tryCount >= InitTryTimes {
-					//	log.Panicln("try init user failure some time, program exit")
-					//}
+					if tryCount >= InitTryTimes {
+						log.Panicln("try init user failure some time, program exit")
+					}
 					time.Sleep(1 * time.Second)
 
 					break loop
 				} else {
-					log.Panicln("init user failure, program exit")
+					log.Errorf("failed to init user [%s] with %v\n", v.Username, err )
 				}
 			} else {
 				keepGoing = true
@@ -176,26 +180,32 @@ func (m *Manager) Update(ch chan os.Signal) {
 loop:
 	for {
 		// push local data to remote Db
-		m.pushTransfer()
-		m.pushNodeStatus()
+		err = m.pushTransfer()
+		if err != nil {
+			log.Errorf("error on push data statistics to remote db: %s\n", err.Error())
+		} else {
+			err = m.pushNodeStatus()
+			if err != nil{
+				log.Errorf("error on push node status to remote db: %s\n", err.Error())
+			}
+		}
 
 		m.remoteRepo, err = m.MyDb.PullUser(m.Cfg.V2ray.NodeId)
 		if err != nil || m.remoteRepo == nil {
-			log.Errorf("error on pull users from remote db, %v", err)
+			log.Errorf("error on pull users from remote db: %s", err.Error())
 
 		} else {
-			//push local user transfer to remote db
-			// push node
+			//log.Debugf("the number of users from remote db is %d\n", len(m.remoteRepo.Usermap))
 			m.addNewUsers()
 			m.removeUsers()
 			if err = utils.WriteRepo(DatFile, m.localRepo); err != nil {
-				log.Errorf("error write remote repository to dat file. %v\n", err)
+				log.Errorf("error write remote repository to dat file. %s", err.Error())
 			}
 		}
 
 		select {
 		case <-time.After(time.Duration(m.Cfg.V2ray.CycleSecond) * time.Second):
-			log.Debugln("An cycle check is completed")
+			log.Debugln("whole check procedure is completed")
 			continue
 		case <-ch:
 			break loop
@@ -205,14 +215,17 @@ loop:
 
 func (m *Manager) pushTransfer() error {
 
+	var userList []pb.User
+
 	for _, v := range m.localRepo.Usermap {
-		err := m.V2Inst.GetTraffic(v, true)
-		if err != nil {
-			return err
-			//log.Error(err)
+		err := m.V2Inst.GetTraffic(v, false)
+
+		if err == nil {
+			userList = append(userList, *v)
 		}
 	}
-	err := m.MyDb.PushUserTransfer(m.localRepo)
+	err := m.MyDb.PushUserTransfer(userList)
+	//err := m.MyDb.PushUserTransfer(m.localRepo)
 	if err != nil {
 		return err
 	}
@@ -221,6 +234,7 @@ func (m *Manager) pushTransfer() error {
 	for _, v := range m.localRepo.Usermap {
 		v.UpIncr = 0
 		v.DownIncr = 0
+		m.V2Inst.GetTraffic(v, true)
 	}
 	return nil
 }

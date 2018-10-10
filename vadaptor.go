@@ -12,12 +12,12 @@ func main() {
 	vch := make(chan os.Signal, 1)
 	mch := make(chan os.Signal, 1)
 
-	signal.Notify(vch,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-	)
+	//signal.Notify(vch,
+	//	syscall.SIGHUP,
+	//	syscall.SIGINT,
+	//	syscall.SIGTERM,
+	//	syscall.SIGQUIT,
+	//)
 
 	signal.Notify(mch,
 		syscall.SIGHUP,
@@ -32,7 +32,7 @@ func main() {
 
 	//ctx, _ := context.WithCancel(context.Background())
 	//
-	go pm.ProcLooper( vch)
+	go pm.ProcLooper(vch)
 
 	//vch<-syscall.SIGTERM
 
@@ -40,6 +40,6 @@ func main() {
 	manager.Update(mch)
 
 	defer func(ch chan os.Signal) {
-		ch<-syscall.SIGTERM
+		ch <- syscall.SIGTERM
 	}(vch)
 }

@@ -1,4 +1,5 @@
 #!/bin/bash
+#deprecated because change upload mode
 extract() {
         tar zxvf vadaptor-linux.tar.gz --remove-file
         unzip v2ray-linux-64.zip
