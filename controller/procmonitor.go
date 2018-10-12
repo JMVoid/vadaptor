@@ -7,6 +7,7 @@ import (
 	"io"
 	"time"
 	"os"
+	"sync"
 )
 
 const LOOPINTERVAL = 60
@@ -62,7 +63,7 @@ func (m *Monitor) runV2ray() {
 }
 
 //func (m *Monitor) ProcLooper(ctx context.Context, ch chan os.Signal) {
-func (m *Monitor) ProcLooper(ch chan os.Signal) {
+func (m *Monitor) ProcLooper(ch chan os.Signal, wg *sync.WaitGroup) {
 
 	go m.runV2ray()
 loop:
@@ -81,8 +82,8 @@ loop:
 		case <-time.After(time.Duration(LOOPINTERVAL) * time.Second):
 			continue
 		case <-ch:
-			//log.Errorln("get signal and interrupt process")
 			m.cmd.Process.Signal(os.Interrupt)
+			wg.Done()
 			break loop
 		}
 	}
